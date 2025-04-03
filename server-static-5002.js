@@ -378,6 +378,23 @@ app.get('/api/requests/:id', (req, res) => {
   });
 });
 
+// React app routes - serve fallback for react app routes
+app.get('/requests/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
+});
+
+app.get('/requests', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
+});
+
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
+});
+
+app.get('/profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
+});
+
 // Any other route should serve the React app
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'client/build/index.html'));
@@ -394,8 +411,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5002; // Use port 5002 for static server
+// Start server with fixed port 5002, ignoring environment variable
+const PORT = 5002; // Static server always uses port 5002
 app.listen(PORT, () => {
   console.log(`Static server running on port ${PORT}`);
   console.log(`Server is available at http://localhost:${PORT}`);

@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ODRS - Document Request Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="header-logo">ODRS</div>
+      <nav class="main-nav">
+        <ul>
+          <li><a href="#" class="active" onclick="showPage('requests')">My Requests</a></li>
+          <li><a href="#" onclick="showPage('new-request')">New Request</a></li>
+          <li id="approvals-nav-item" style="display: none;"><a href="#" onclick="showPage('approvals')">Pending Approvals</a></li>
+          <li id="processing-nav-item" style="display: none;"><a href="#" onclick="showPage('processing')">Processing Queue</a></li>
+          <li id="reports-nav-item" style="display: none;"><a href="#" onclick="showPage('reports')">Reports</a></li>
+          <li id="notifications-nav-item"><a href="#" onclick="showPage('notifications')">Notifications <span id="notification-badge" class="notification-count" style="display: none;">0</span></a></li>
+          <li><a href="verify.html" target="_blank">Public Verification</a></li>
+        </ul>
+      </nav>
+      <div class="user-actions">
+        <div class="user-info">
+          <span class="user-name" id="user-name">Loading...</span>
+          <span class="user-role" id="user-role"></span>
+        </div>
+        <button class="settings-btn" onclick="showEmailSettingsModal()">Settings</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <main class="app-content">
+      <!-- Login Page -->
+      <div id="login-page" class="page">
+        <div class="login-container">
+          <div class="login-card">
+            <h2>Login</h2>
+            <div id="login-error" class="error-message" style="display: none;">
+              Invalid credentials
+              <button onclick="document.getElementById('login-error').style.display = 'none'" class="close-btn">×</button>
+            </div>
+            <form id="login-form" class="login-form">
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+              </div>
+              <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+              </div>
+              <button type="submit" class="login-btn" id="login-btn">Login</button>
+            </form>
+            <div class="test-accounts">
+              <h3>Test Accounts</h3>
+              <div class="test-account">
+                <p><strong>Admin:</strong> admin@odocs.devapp.cc / admin123</p>
+              </div>
+              <div class="test-account">
+                <p><strong>Staff:</strong> staff@odocs.devapp.cc / admin123</p>
+              </div>
+              <div class="test-account">
+                <p><strong>Student:</strong> student@odocs.devapp.cc / admin123</p>
+              </div>
+              <div class="test-account">
+                <p><strong>Approver:</strong> advisor@odocs.devapp.cc / admin123</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Requests Page -->
+      <div id="requests-page" class="page" style="display: none;">
+        <div class="requests-container">
+          <div class="requests-header">
+            <h2>My Requests</h2>
+            <button class="button primary" onclick="showPage('new-request')">New Request</button>
+          </div>
+          <div id="requests-list" class="requests-list">
+            <div class="loading">Loading requests...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Request Page -->
+      <div id="new-request-page" class="page" style="display: none;">
+        <div class="request-form-container">
+          <h2>Request Document</h2>
+          
+          <div id="request-error" class="error-message" style="display: none;">
+            Error message
+            <button onclick="document.getElementById('request-error').style.display = 'none'" class="close-btn">×</button>
+          </div>
+          
+          <form id="request-form" class="request-form">
+            <div class="form-group">
+              <label for="documentTypeId">Document Type</label>
+              <select id="documentTypeId" name="documentTypeId" required>
+                <option value="">Select document type</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="quantity">Quantity</label>
+              <input type="number" id="quantity" name="quantity" min="1" value="1" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="language">Language</label>
+              <select id="language" name="language" required>
+                <option value="thai">Thai</option>
+                <option value="english">English</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="deliveryMethod">Delivery Method</label>
+              <select id="deliveryMethod" name="deliveryMethod" required>
+                <option value="pickup">Pickup in Person</option>
+                <option value="mail">Mail Delivery</option>
+                <option value="digital">Digital Document</option>
+              </select>
+            </div>
+            
+            <div class="form-group" id="address-group" style="display: none;">
+              <label for="deliveryAddress">Delivery Address</label>
+              <textarea id="deliveryAddress" name="deliveryAddress" rows="3"></textarea>
+            </div>
+            
+            <div class="form-actions">
+              <button type="button" id="calculate-btn" class="calculate-btn">Calculate Price</button>
+            </div>
+            
+            <div id="price-details" class="price-details" style="display: none;">
+              <h3>Estimated Price</h3>
+              <div class="price-row">
+                <span>Document Price</span>
+                <span class="price" id="document-price">0</span>
+              </div>
+              <div class="price-row">
+                <span>Shipping Fee</span>
+                <span class="price" id="shipping-price">0</span>
+              </div>
+              <div class="price-row total">
+                <span>Total</span>
+                <span class="price" id="total-price">0</span>
+              </div>
+              
+              <button type="submit" id="submit-btn" class="submit-btn">Submit Request</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Request Detail Page -->
+      <div id="request-detail-page" class="page" style="display: none;">
+        <div class="request-details-container">
+          <div class="request-details-header">
+            <h2>Request Details</h2>
+            <button onclick="showPage('requests')" class="back-btn">Back to Requests</button>
+          </div>
+          
+          <div id="request-info" class="request-info-card">
+            <div class="loading">Loading request details...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approvals Page -->
+      <div id="approvals-page" class="page" style="display: none;">
+        <div class="approvals-container">
+          <div class="approvals-header">
+            <h2>Pending Approvals</h2>
+          </div>
+          <div id="approvals-list" class="approvals-list">
+            <div class="loading">Loading pending approvals...</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Processing Queue Page -->
+      <div id="processing-page" class="page" style="display: none;">
+        <div class="processing-container">
+          <div class="processing-header">
+            <h2>Document Processing Queue</h2>
+          </div>
+          <div id="processing-list" class="processing-list">
+            <div class="loading">Loading processing queue...</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Notifications Page -->
+      <div id="notifications-page" class="page" style="display: none;">
+        <div class="notifications-container">
+          <div class="notifications-header">
+            <h2>Notifications</h2>
+            <button id="mark-all-read-btn" class="button secondary" onclick="markAllNotificationsAsRead()">Mark All as Read</button>
+          </div>
+          <div class="notification-filters">
+            <label>
+              <input type="radio" name="notification-filter" value="all" checked onchange="filterNotifications('all')">
+              <span>All</span>
+            </label>
+            <label>
+              <input type="radio" name="notification-filter" value="unread" onchange="filterNotifications('unread')">
+              <span>Unread</span>
+            </label>
+          </div>
+          <div id="notifications-list" class="notifications-list">
+            <div class="loading">Loading notifications...</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Reports Page -->
+      <div id="reports-page" class="page" style="display: none;">
+        <div class="reports-container">
+          <div class="reports-header">
+            <h2>Reports & Analytics</h2>
+            <div class="date-filter">
+              <label for="report-period">Period:</label>
+              <select id="report-period" onchange="loadReports()">
+                <option value="7days">Last 7 Days</option>
+                <option value="30days" selected>Last 30 Days</option>
+                <option value="90days">Last 90 Days</option>
+                <option value="year">Last Year</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Dashboard Cards -->
+          <div class="dashboard-cards">
+            <div class="dashboard-card">
+              <div class="card-header">
+                <h3>Total Requests</h3>
+              </div>
+              <div class="card-value" id="total-requests">0</div>
+              <div class="card-trend positive">
+                <span class="trend-icon">↑</span>
+                <span class="trend-value" id="total-requests-trend">0%</span>
+                <span class="trend-period">vs previous period</span>
+              </div>
+            </div>
+            
+            <div class="dashboard-card">
+              <div class="card-header">
+                <h3>Processing Time</h3>
+              </div>
+              <div class="card-value" id="avg-processing-time">0 days</div>
+              <div class="card-trend negative">
+                <span class="trend-icon">↓</span>
+                <span class="trend-value" id="processing-time-trend">0%</span>
+                <span class="trend-period">vs previous period</span>
+              </div>
+            </div>
+            
+            <div class="dashboard-card">
+              <div class="card-header">
+                <h3>Revenue</h3>
+              </div>
+              <div class="card-value" id="total-revenue">฿0</div>
+              <div class="card-trend positive">
+                <span class="trend-icon">↑</span>
+                <span class="trend-value" id="revenue-trend">0%</span>
+                <span class="trend-period">vs previous period</span>
+              </div>
+            </div>
+            
+            <div class="dashboard-card">
+              <div class="card-header">
+                <h3>Approval Rate</h3>
+              </div>
+              <div class="card-value" id="approval-rate">0%</div>
+              <div class="card-trend neutral">
+                <span class="trend-icon">→</span>
+                <span class="trend-value" id="approval-rate-trend">0%</span>
+                <span class="trend-period">vs previous period</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Charts Section -->
+          <div class="chart-container">
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>Request Volume by Document Type</h3>
+              </div>
+              <div class="chart">
+                <div class="chart-placeholder" id="document-type-chart">
+                  <div class="bar-chart">
+                    <div class="chart-bar-container">
+                      <div class="chart-label">Transcript</div>
+                      <div class="chart-bar" style="width: 80%;">
+                        <span class="chart-value">80</span>
+                      </div>
+                    </div>
+                    <div class="chart-bar-container">
+                      <div class="chart-label">Certificate</div>
+                      <div class="chart-bar" style="width: 60%;">
+                        <span class="chart-value">60</span>
+                      </div>
+                    </div>
+                    <div class="chart-bar-container">
+                      <div class="chart-label">Letter</div>
+                      <div class="chart-bar" style="width: 40%;">
+                        <span class="chart-value">40</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="chart-card">
+              <div class="chart-header">
+                <h3>Requests by Status</h3>
+              </div>
+              <div class="chart">
+                <div class="chart-placeholder" id="status-chart">
+                  <div class="donut-chart">
+                    <div class="donut-segment" style="--start: 0; --end: 0.25; --color: #4CAF50;">
+                      <span class="segment-label">Completed</span>
+                    </div>
+                    <div class="donut-segment" style="--start: 0.25; --end: 0.5; --color: #2196F3;">
+                      <span class="segment-label">Processing</span>
+                    </div>
+                    <div class="donut-segment" style="--start: 0.5; --end: 0.7; --color: #FFC107;">
+                      <span class="segment-label">Pending</span>
+                    </div>
+                    <div class="donut-segment" style="--start: 0.7; --end: 1; --color: #F44336;">
+                      <span class="segment-label">Rejected</span>
+                    </div>
+                    <div class="donut-center">
+                      <div class="donut-label">
+                        <span class="donut-value">120</span>
+                        <span class="donut-title">Total</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Request Table -->
+          <div class="report-table-card">
+            <div class="report-table-header">
+              <h3>Recent Requests</h3>
+            </div>
+            <div class="report-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Request Number</th>
+                    <th>Document Type</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Processing Time</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-requests-table">
+                  <tr>
+                    <td colspan="5" class="table-loading">Loading data...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Payment Page -->
+      <div id="payment-page" class="page" style="display: none;">
+        <div class="payment-container">
+          <div class="payment-header">
+            <h2>Payment Information</h2>
+            <button onclick="showPage('request-detail')" class="back-btn">Back to Request</button>
+          </div>
+          <div id="payment-form-container" class="payment-form-container">
+            <div id="payment-error" class="error-message" style="display: none;">
+              Error message
+              <button onclick="document.getElementById('payment-error').style.display = 'none'" class="close-btn">×</button>
+            </div>
+            
+            <div class="payment-info-card">
+              <div class="payment-summary">
+                <h3>Payment Summary</h3>
+                <div class="payment-detail-item">
+                  <span class="label">Request Number</span>
+                  <span id="payment-request-number" class="value"></span>
+                </div>
+                <div class="payment-detail-item">
+                  <span class="label">Document Type</span>
+                  <span id="payment-document-type" class="value"></span>
+                </div>
+                <div class="payment-detail-item">
+                  <span class="label">Document Price</span>
+                  <span id="payment-document-price" class="value"></span>
+                </div>
+                <div class="payment-detail-item">
+                  <span class="label">Shipping Fee</span>
+                  <span id="payment-shipping-fee" class="value"></span>
+                </div>
+                <div class="payment-detail-item total">
+                  <span class="label">Total Price</span>
+                  <span id="payment-total-price" class="value"></span>
+                </div>
+              </div>
+              
+              <div class="payment-methods">
+                <h3>Payment Method</h3>
+                <div class="payment-method-options">
+                  <label class="payment-method-option">
+                    <input type="radio" name="paymentMethod" value="bank" checked>
+                    <span class="radio-label">Bank Transfer</span>
+                  </label>
+                  <label class="payment-method-option">
+                    <input type="radio" name="paymentMethod" value="creditCard">
+                    <span class="radio-label">Credit Card</span>
+                  </label>
+                  <label class="payment-method-option">
+                    <input type="radio" name="paymentMethod" value="promptPay">
+                    <span class="radio-label">PromptPay</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div id="bank-transfer-details" class="payment-method-details">
+                <h4>Bank Transfer Details</h4>
+                <div class="bank-account-info">
+                  <div class="payment-detail-item">
+                    <span class="label">Bank Name</span>
+                    <span class="value">Thai University Bank</span>
+                  </div>
+                  <div class="payment-detail-item">
+                    <span class="label">Account Number</span>
+                    <span class="value">123-456-7890</span>
+                  </div>
+                  <div class="payment-detail-item">
+                    <span class="label">Account Name</span>
+                    <span class="value">University Document Center</span>
+                  </div>
+                </div>
+                
+                <div class="payment-reference-section">
+                  <h4>Payment Reference</h4>
+                  <p>After completing your payment, please enter the payment reference below.</p>
+                  
+                  <form id="payment-form" class="payment-form">
+                    <input type="hidden" id="payment-request-id" name="requestId">
+                    
+                    <div class="form-group">
+                      <label for="paymentReference">Reference Number / Transaction ID</label>
+                      <input type="text" id="paymentReference" name="paymentReference" required placeholder="e.g., Transaction ID or last 4 digits of your account">
+                    </div>
+                    
+                    <div class="form-group">
+                      <label for="paymentAmount">Amount Paid (THB)</label>
+                      <input type="number" id="paymentAmount" name="paymentAmount" required>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label for="paymentDate">Payment Date</label>
+                      <input type="date" id="paymentDate" name="paymentDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                      <label for="paymentFile">Upload Payment Proof (Optional)</label>
+                      <input type="file" id="paymentFile" name="paymentFile">
+                      <span class="file-format-hint">Accept .jpg, .png, .pdf (Max 5MB)</span>
+                    </div>
+                    
+                    <div class="form-actions">
+                      <button type="submit" id="submit-payment-btn" class="submit-payment-btn">Submit Payment</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              
+              <div id="credit-card-details" class="payment-method-details" style="display: none;">
+                <p class="payment-demo-message">Credit card payment integration is under development. Please use Bank Transfer instead.</p>
+              </div>
+              
+              <div id="promptpay-details" class="payment-method-details" style="display: none;">
+                <p class="payment-demo-message">PromptPay integration is under development. Please use Bank Transfer instead.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery Modal -->
+      <div id="delivery-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Update Delivery Status</h2>
+            <span class="close-modal" onclick="closeDeliveryModal()">&times;</span>
+          </div>
+          <div id="delivery-form-container">
+            <div id="delivery-error" class="error-message" style="display: none;">
+              Error message
+              <button onclick="document.getElementById('delivery-error').style.display = 'none'" class="close-btn">×</button>
+            </div>
+            
+            <form id="delivery-form" class="delivery-form">
+              <input type="hidden" id="delivery-request-id" name="requestId">
+              
+              <div class="form-group">
+                <label for="delivery-status">Delivery Status</label>
+                <select id="delivery-status" name="status" required>
+                  <option value="">Select status</option>
+                  <option value="processing">Processing</option>
+                  <option value="ready">Ready for Pickup/Shipping</option>
+                  <option value="shipped">Shipped</option>
+                  <option value="delivered">Delivered</option>
+                </select>
+              </div>
+              
+              <div class="form-group" id="tracking-number-group" style="display: none;">
+                <label for="tracking-number">Tracking Number</label>
+                <input type="text" id="tracking-number" name="trackingNumber" placeholder="Enter tracking number">
+              </div>
+              
+              <div class="form-group">
+                <label for="delivery-notes">Notes</label>
+                <textarea id="delivery-notes" name="deliveryNotes" rows="3" placeholder="Optional notes about the delivery"></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="document-file">Upload Document Preview</label>
+                <input type="file" id="document-file" name="documentFile" accept=".pdf,.jpg,.jpeg,.png">
+                <span class="file-format-hint">Accept .pdf, .jpg, .png (Max 5MB)</span>
+              </div>
+              
+              <div class="form-actions">
+                <button type="button" class="button secondary" onclick="closeDeliveryModal()">Cancel</button>
+                <button type="submit" class="button primary">Update Status</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Document Preview Modal -->
+      <div id="document-preview-modal" class="modal" style="display: none;">
+        <div class="modal-content document-preview-content">
+          <div class="modal-header">
+            <h2>Document Preview</h2>
+            <span class="close-modal" onclick="closeDocumentPreviewModal()">&times;</span>
+          </div>
+          <div id="document-preview-container">
+            <div id="document-preview-image">
+              <!-- Preview content will be loaded here -->
+            </div>
+            <div class="document-preview-actions">
+              <button type="button" class="button primary" onclick="downloadDocument()">Download</button>
+              <button type="button" class="button secondary" onclick="closeDocumentPreviewModal()">Close</button>
+              <button type="button" class="button verify" onclick="verifyDocument()" id="verify-document-btn">Verify Document</button>
+              <button type="button" class="button share" onclick="shareVerificationLink()" id="share-verification-btn">Share Verification Link</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Document Verification Modal -->
+      <div id="verification-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Document Verification</h2>
+            <span class="close-modal" onclick="closeVerificationModal()">&times;</span>
+          </div>
+          <div id="verification-container">
+            <div class="verification-code-container">
+              <p>Enter the verification code printed on the document:</p>
+              <div class="verification-input-group">
+                <input type="text" id="verification-code" class="verification-code-input" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19">
+                <button type="button" class="button primary" onclick="checkVerificationCode()">Verify</button>
+              </div>
+            </div>
+            <div id="verification-result" class="verification-result">
+              <!-- Verification result will be shown here -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Approval Form Modal -->
+      <div id="approval-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Review Request</h2>
+            <span class="close-modal" onclick="closeApprovalModal()">&times;</span>
+          </div>
+          <div id="approval-form-container">
+            <div id="approval-error" class="error-message" style="display: none;">
+              Error message
+              <button onclick="document.getElementById('approval-error').style.display = 'none'" class="close-btn">×</button>
+            </div>
+            
+            <form id="approval-form" class="approval-form">
+              <input type="hidden" id="approval-request-id" name="requestId">
+              
+              <div class="form-group">
+                <label for="approval-action">Decision</label>
+                <select id="approval-action" name="action" required>
+                  <option value="">Select decision</option>
+                  <option value="approve">Approve</option>
+                  <option value="reject">Reject</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="approval-comments">Comments</label>
+                <textarea id="approval-comments" name="comments" rows="4" placeholder="Optional comments"></textarea>
+              </div>
+              
+              <div class="form-actions">
+                <button type="button" class="button secondary" onclick="closeApprovalModal()">Cancel</button>
+                <button type="submit" class="button primary">Submit Decision</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Email Settings Modal -->
+      <div id="email-settings-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Email Notification Settings</h2>
+            <span class="close-modal" onclick="closeEmailSettingsModal()">&times;</span>
+          </div>
+          <div id="email-settings-container">
+            <div class="email-settings-form">
+              <div class="form-group">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="email-notifications-enabled">
+                  <span class="checkbox-label">Enable email notifications</span>
+                </label>
+              </div>
+              
+              <div class="notification-types">
+                <h3>Notification Types</h3>
+                <div class="form-group">
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="email-request-submitted">
+                    <span class="checkbox-label">Document request submitted</span>
+                  </label>
+                </div>
+                
+                <div class="form-group">
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="email-payment-confirmed">
+                    <span class="checkbox-label">Payment confirmed</span>
+                  </label>
+                </div>
+                
+                <div class="form-group">
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="email-approval-updates">
+                    <span class="checkbox-label">Approval updates</span>
+                  </label>
+                </div>
+                
+                <div class="form-group">
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="email-document-ready">
+                    <span class="checkbox-label">Document ready for pickup</span>
+                  </label>
+                </div>
+                
+                <div class="form-group">
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="email-document-shipped">
+                    <span class="checkbox-label">Document shipped</span>
+                  </label>
+                </div>
+                
+                <div class="form-group">
+                  <label class="checkbox-container">
+                    <input type="checkbox" id="email-document-delivered">
+                    <span class="checkbox-label">Document delivered</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="form-actions">
+                <button type="button" class="button secondary" onclick="closeEmailSettingsModal()">Cancel</button>
+                <button type="button" class="button primary" onclick="saveEmailSettingsFromModal()">Save Settings</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p>&copy; 2025 ODRS - Online Document Request System</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

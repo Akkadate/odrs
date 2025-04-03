@@ -1,0 +1,14 @@
+[Unit]
+Description=ODRS Static Document Request Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/app/odocs/odrs
+ExecStart=/usr/bin/node server-static-5003.js
+Restart=on-failure
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

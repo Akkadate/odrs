@@ -9,6 +9,17 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// CORS support
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Request logger middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -17,6 +28,9 @@ app.use((req, res, next) => {
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, 'client/build')));
+
+// Serve simple document app
+app.use('/document-app', express.static(path.join(__dirname, 'simple-document-app')));
 
 // Sample document types data
 const documentTypes = [
@@ -84,6 +98,9 @@ const documentTypes = [
 
 // Sample requests data
 let requests = [];
+
+// Sample approvals data
+let approvals = [];
 
 // Create a simple route for testing
 app.get('/api/status', (req, res) => {
@@ -250,13 +267,13 @@ app.post('/api/requests', (req, res) => {
   }
   
   // Determine initial status based on document type
-  let status, currentApprovalLevel;
-  if (!documentType.requiresApproval) {
-    status = 'pending_payment';
-    currentApprovalLevel = null;
-  } else {
-    status = 'pending_payment'; // Will move to pending_approval after payment
-    currentApprovalLevel = documentType.approvalLevels ? documentType.approvalLevels[0] : null;
+  let status = 'pending_payment';
+  let currentApprovalLevel = null;
+  
+  // If document requires approval, set the initial approval level
+  if (documentType.requiresApproval && documentType.approvalLevels && documentType.approvalLevels.length > 0) {
+    // Will move to this approval level after payment is confirmed
+    currentApprovalLevel = documentType.approvalLevels[0];
   }
   
   // Generate a request number
@@ -372,10 +389,317 @@ app.get('/api/requests/:id', (req, res) => {
     });
   }
   
+  // Get approval history
+  const requestApprovals = approvals.filter(approval => approval.requestId === id);
+  
+  const responseData = {
+    ...request,
+    approvals: requestApprovals
+  };
+  
+  res.json({
+    status: 'success',
+    data: responseData
+  });
+});
+
+// Update payment status (simplified)
+app.post('/api/requests/:id/payment', (req, res) => {
+  const { id } = req.params;
+  const { paymentReference } = req.body;
+  
+  // Get user info from auth header
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Not authorized. Please log in.'
+    });
+  }
+  
+  // Find the request
+  const request = requests.find(req => req.id === id);
+  if (!request) {
+    return res.status(404).json({
+      status: 'error',
+      message: 'Request not found'
+    });
+  }
+  
+  // Update payment status
+  request.paymentStatus = 'paid';
+  request.paymentReference = paymentReference;
+  request.paymentDate = new Date().toISOString();
+  
+  // If approval is required, update status to pending_approval
+  if (request.currentApprovalLevel) {
+    request.status = 'pending_approval';
+  } else {
+    request.status = 'processing';
+  }
+  
   res.json({
     status: 'success',
     data: request
   });
+});
+
+// Approve or reject request
+app.post('/api/requests/:id/approval', (req, res) => {
+  const { id } = req.params;
+  const { action, comments } = req.body;
+  
+  // Get user info from auth header
+  const authHeader = req.headers.authorization;
+  let userId, userRole, approverLevel;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    // In this demo, we'll just extract the user info from the query or body
+    userId = req.body.userId || req.query.userId;
+    userRole = req.body.userRole || req.query.userRole;
+    approverLevel = req.body.approverLevel || req.query.approverLevel;
+    
+    if (userRole !== 'approver' && userRole !== 'admin' && userRole !== 'staff') {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You are not authorized to approve requests'
+      });
+    }
+  } else {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Not authorized. Please log in.'
+    });
+  }
+  
+  // Find the request
+  const request = requests.find(req => req.id === id);
+  if (!request) {
+    return res.status(404).json({
+      status: 'error',
+      message: 'Request not found'
+    });
+  }
+  
+  // Check if the request is in a state that can be approved
+  if (request.status !== 'pending_approval') {
+    return res.status(400).json({
+      status: 'error',
+      message: `Request is in ${request.status} state and cannot be approved or rejected`
+    });
+  }
+  
+  // Check if the user is the correct approver for current level
+  if (userRole === 'approver' && approverLevel !== request.currentApprovalLevel) {
+    return res.status(403).json({
+      status: 'error',
+      message: `This request needs approval from ${request.currentApprovalLevel}, not ${approverLevel}`
+    });
+  }
+  
+  // Create approval record
+  const approval = {
+    id: 'appr-' + Date.now(),
+    requestId: id,
+    approverId: userId,
+    approverRole: userRole,
+    approverLevel: approverLevel,
+    action: action, // 'approve' or 'reject'
+    comments: comments || '',
+    createdAt: new Date().toISOString()
+  };
+  
+  // Add to approvals
+  approvals.push(approval);
+  
+  // Update request status based on action
+  if (action === 'approve') {
+    // If document has multiple approval levels, find the next one
+    if (request.documentTypeId) {
+      const documentType = documentTypes.find(dt => dt.id === request.documentTypeId);
+      
+      if (documentType && documentType.approvalLevels && documentType.approvalLevels.length > 0) {
+        const currentLevelIndex = documentType.approvalLevels.indexOf(request.currentApprovalLevel);
+        
+        if (currentLevelIndex < documentType.approvalLevels.length - 1) {
+          // Move to next approval level
+          request.currentApprovalLevel = documentType.approvalLevels[currentLevelIndex + 1];
+        } else {
+          // Last level approved, move to processing
+          request.status = 'processing';
+          request.currentApprovalLevel = null;
+        }
+      } else {
+        // No approval levels defined, move to processing
+        request.status = 'processing';
+        request.currentApprovalLevel = null;
+      }
+    } else {
+      // If no document type info, just move to processing
+      request.status = 'processing';
+      request.currentApprovalLevel = null;
+    }
+  } else if (action === 'reject') {
+    // Reject the request
+    request.status = 'rejected';
+    request.currentApprovalLevel = null;
+  }
+  
+  res.json({
+    status: 'success',
+    data: {
+      request,
+      approval
+    }
+  });
+});
+
+// Get pending approvals for an approver
+app.get('/api/approvals/pending', (req, res) => {
+  // Get user info from auth header
+  const authHeader = req.headers.authorization;
+  let approverLevel;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    // In this demo, we'll just extract the approver level from the query
+    approverLevel = req.query.approverLevel;
+    
+    if (!approverLevel) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Approver level is required'
+      });
+    }
+  } else {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Not authorized. Please log in.'
+    });
+  }
+  
+  // Filter requests that need approval from this approver
+  const pendingRequests = requests.filter(req => 
+    req.status === 'pending_approval' && 
+    req.currentApprovalLevel === approverLevel
+  );
+  
+  res.json({
+    status: 'success',
+    count: pendingRequests.length,
+    data: pendingRequests
+  });
+});
+
+// Update delivery status for a request
+app.post('/api/requests/:id/delivery', (req, res) => {
+  const { id } = req.params;
+  const { status, trackingNumber, deliveryMethod, deliveryNotes, deliveredBy } = req.body;
+  
+  // Get user info from auth header
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Not authorized. Please log in.'
+    });
+  }
+  
+  // Validate user role (only staff and admin can update delivery status)
+  const userRole = req.body.userRole || req.query.userRole;
+  if (userRole !== 'admin' && userRole !== 'staff') {
+    return res.status(403).json({
+      status: 'error',
+      message: 'You are not authorized to update delivery status'
+    });
+  }
+  
+  // Find the request
+  const request = requests.find(req => req.id === id);
+  if (!request) {
+    return res.status(404).json({
+      status: 'error',
+      message: 'Request not found'
+    });
+  }
+  
+  // Check if request is in a valid state for delivery update
+  if (request.status !== 'processing' && request.status !== 'completed' && request.status !== 'delivered') {
+    return res.status(400).json({
+      status: 'error',
+      message: `Request is in ${request.status} state and cannot be updated for delivery`
+    });
+  }
+  
+  // Update delivery information
+  request.deliveryStatus = status;
+  request.trackingNumber = trackingNumber;
+  request.deliveryUpdatedBy = deliveredBy;
+  request.deliveryNotes = deliveryNotes;
+  request.deliveryUpdatedAt = new Date().toISOString();
+  
+  // If marked as delivered, update request status
+  if (status === 'delivered') {
+    request.status = 'delivered';
+    request.deliveredAt = new Date().toISOString();
+  } else if (status === 'ready') {
+    request.status = 'completed';
+    request.completedAt = new Date().toISOString();
+  }
+  
+  res.json({
+    status: 'success',
+    data: request
+  });
+});
+
+// Get staff processing queue (documents ready for processing/delivery)
+app.get('/api/requests/processing', (req, res) => {
+  // Get user info from auth header
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Not authorized. Please log in.'
+    });
+  }
+  
+  // Validate user role (only staff and admin can view processing queue)
+  const userRole = req.query.userRole;
+  if (userRole !== 'admin' && userRole !== 'staff') {
+    return res.status(403).json({
+      status: 'error',
+      message: 'You are not authorized to view the processing queue'
+    });
+  }
+  
+  // Filter requests in processing and completed state
+  const processingRequests = requests.filter(req => 
+    req.status === 'processing' || req.status === 'completed'
+  );
+  
+  res.json({
+    status: 'success',
+    count: processingRequests.length,
+    data: processingRequests
+  });
+});
+
+// React app routes - serve fallback for react app routes
+app.get('/requests/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
+});
+
+app.get('/requests', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
+});
+
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
+});
+
+app.get('/profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build/fallback.html'));
 });
 
 // Any other route should serve the React app
@@ -394,8 +718,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5002; // Use port 5002 for static server
+// Start server with fixed port 5003, ignoring environment variable
+const PORT = 5003; // Static server always uses port 5003
 app.listen(PORT, () => {
   console.log(`Static server running on port ${PORT}`);
   console.log(`Server is available at http://localhost:${PORT}`);

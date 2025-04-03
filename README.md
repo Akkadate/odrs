@@ -2,6 +2,19 @@
 
 A comprehensive solution for managing document requests in educational institutions. This system allows students and staff to request official documents, track their requests, and receive notifications at each step of the process.
 
+## Document Request Feature Update
+
+We've recently implemented the Document Request Submission feature, which includes:
+
+1. A React frontend component for creating document requests
+2. Backend API endpoints for:
+   - Listing available document types
+   - Creating new document requests
+   - Retrieving document request details
+   - Listing a user's document requests
+3. Role-based access control for document requests
+4. Pricing calculation based on document type, quantity, and delivery method
+
 ## Features
 
 - User authentication and authorization with different roles (student, staff, approver, admin)
@@ -173,7 +186,24 @@ odrs/
 
 ## Fallback Mode
 
-If the main server fails to connect to the database, it will automatically fall back to using a SQLite database. In some cases, it will use a simplified static server that provides basic functionality.
+If the main server fails to connect to the database, it will automatically fall back to using a SQLite database. For development and testing without any database, we provide a simplified static server implementation:
+
+```bash
+# Start the static server (from project root)
+node server-static.js
+
+# In a separate terminal, start the React frontend with static API integration
+cd client
+npm run start:static
+```
+
+This static server implements the core functionality:
+- User authentication with test accounts
+- Document type listing
+- Document request creation and retrieval
+- Role-based access controls
+
+The static server runs on port 5002 and provides a simplified API that matches the structure of the full backend.
 
 ## License
 

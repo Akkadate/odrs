@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ODRS - Document Verification Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="verify.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+  <div id="app" class="verify-app">
+    <header class="verify-header">
+      <div class="header-logo">ODRS</div>
+      <div class="header-title">Document Verification Portal</div>
+      <a href="index.html" class="login-link">Login to ODRS</a>
+    </header>
+
+    <main class="verify-content">
+      <div class="verify-container">
+        <div class="verify-card">
+          <h1>Verify Document Authenticity</h1>
+          <p class="verify-instruction">Enter the verification code printed on your document to confirm its authenticity and validity.</p>
+          
+          <div class="verification-code-container">
+            <div class="verification-input-group">
+              <input type="text" id="verification-code" class="verification-code-input" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19">
+              <button type="button" class="button primary" onclick="checkVerificationCode()">Verify</button>
+            </div>
+          </div>
+          
+          <div id="verification-result" class="verification-result">
+            <!-- Verification result will be shown here -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p>&copy; 2025 ODRS - Online Document Request System</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="verify.js"></script>
+</body>
+</html>
