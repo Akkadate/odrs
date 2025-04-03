@@ -1,0 +1,2 @@
+Linux Ubuntu Server 22.0 S
+NGINX Web server 
