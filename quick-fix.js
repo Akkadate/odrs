@@ -1,0 +1,307 @@
+/**
+ * Simple server that handles login and serves a static page
+ */
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+
+// Create the app
+const app = express();
+app.use(express.json());
+
+// Create a very simple HTML file with login
+const HTML_FILE = path.join(__dirname, 'simple-login.html');
+if (!fs.existsSync(HTML_FILE)) {
+  fs.writeFileSync(HTML_FILE, `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ODRS Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .login-form {
+      background-color: #f5f5f5;
+      padding: 20px;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .message {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .hidden {
+      display: none;
+    }
+    .dashboard {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #e9f7ef;
+      border-radius: 5px;
+    }
+    .test-accounts {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ODRS Simple Login</h1>
+  
+  <div id="login-form" class="login-form">
+    <h2>Login</h2>
+    <div class="form-group">
+      <label for="email">Email:</label>
+      <input type="email" id="email" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password:</label>
+      <input type="password" id="password" required>
+    </div>
+    <button id="login-btn">Login</button>
+    
+    <div id="message" class="message hidden"></div>
+    
+    <div class="test-accounts">
+      <h3>Test Accounts</h3>
+      <p><strong>Admin:</strong> admin@odocs.devapp.cc / admin123</p>
+      <p><strong>Staff:</strong> staff@odocs.devapp.cc / admin123</p>
+      <p><strong>Student:</strong> student@odocs.devapp.cc / admin123</p>
+      <p><strong>Approver:</strong> advisor@odocs.devapp.cc / admin123</p>
+    </div>
+  </div>
+  
+  <div id="dashboard" class="dashboard hidden">
+    <h2>Welcome <span id="user-name"></span></h2>
+    <p>Role: <span id="user-role"></span></p>
+    <div id="role-specific-content"></div>
+    <button id="logout-btn">Logout</button>
+  </div>
+  
+  <script>
+    // Login function
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const messageEl = document.getElementById('message');
+      
+      if (!email || !password) {
+        messageEl.textContent = 'Please enter both email and password';
+        messageEl.className = 'message error';
+        messageEl.classList.remove('hidden');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/simple-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          messageEl.textContent = 'Login successful!';
+          messageEl.className = 'message success';
+          messageEl.classList.remove('hidden');
+          
+          // Show dashboard
+          document.getElementById('login-form').classList.add('hidden');
+          document.getElementById('dashboard').classList.remove('hidden');
+          document.getElementById('user-name').textContent = data.user.firstName + ' ' + data.user.lastName;
+          document.getElementById('user-role').textContent = data.user.role + 
+            (data.user.approverLevel ? ' (' + data.user.approverLevel + ')' : '');
+          
+          // Set role-specific content
+          const roleContent = document.getElementById('role-specific-content');
+          switch(data.user.role) {
+            case 'admin':
+              roleContent.innerHTML = '<h3>Admin Actions</h3><p>You can manage users, system settings, and more.</p>';
+              break;
+            case 'staff':
+              roleContent.innerHTML = '<h3>Staff Actions</h3><p>You can process document requests and manage workflow.</p>';
+              break;
+            case 'approver':
+              roleContent.innerHTML = '<h3>Approver Actions</h3><p>You can review and approve document requests.</p>';
+              break;
+            default:
+              roleContent.innerHTML = '<h3>Student Actions</h3><p>You can request documents and check status.</p>';
+          }
+          
+          // Store user info
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('token', data.token);
+        } else {
+          messageEl.textContent = data.message || 'Login failed. Please check your credentials.';
+          messageEl.className = 'message error';
+          messageEl.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        messageEl.textContent = 'Error connecting to server: ' + error.message;
+        messageEl.className = 'message error';
+        messageEl.classList.remove('hidden');
+      }
+    });
+    
+    // Logout function
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('login-form').classList.remove('hidden');
+      document.getElementById('message').classList.add('hidden');
+      document.getElementById('email').value = '';
+      document.getElementById('password').value = '';
+    });
+    
+    // Check if already logged in
+    window.addEventListener('DOMContentLoaded', () => {
+      const user = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      
+      if (user && token) {
+        const userData = JSON.parse(user);
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        document.getElementById('user-name').textContent = userData.firstName + ' ' + userData.lastName;
+        document.getElementById('user-role').textContent = userData.role + 
+          (userData.approverLevel ? ' (' + userData.approverLevel + ')' : '');
+        
+        // Set role-specific content
+        const roleContent = document.getElementById('role-specific-content');
+        switch(userData.role) {
+          case 'admin':
+            roleContent.innerHTML = '<h3>Admin Actions</h3><p>You can manage users, system settings, and more.</p>';
+            break;
+          case 'staff':
+            roleContent.innerHTML = '<h3>Staff Actions</h3><p>You can process document requests and manage workflow.</p>';
+            break;
+          case 'approver':
+            roleContent.innerHTML = '<h3>Approver Actions</h3><p>You can review and approve document requests.</p>';
+            break;
+          default:
+            roleContent.innerHTML = '<h3>Student Actions</h3><p>You can request documents and check status.</p>';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+  `);
+}
+
+// Serve the static HTML file
+app.get('/', (req, res) => {
+  res.sendFile(HTML_FILE);
+});
+
+// Simple login endpoint that accepts any credentials
+app.post('/api/simple-login', (req, res) => {
+  console.log('Login attempt received on port 5005:', req.body);
+  
+  const { email, password } = req.body;
+  
+  // Check for test accounts
+  if (email && email.includes('@odocs.devapp.cc') && password === 'admin123') {
+    // Determine role based on email prefix
+    let role = 'student';
+    let approverLevel = null;
+    let firstName = email.split('@')[0];
+    let lastName = 'User';
+    
+    if (email.includes('admin')) {
+      role = 'admin';
+      firstName = 'Admin';
+    } else if (email.includes('staff')) {
+      role = 'staff';
+      firstName = 'Staff';
+    } else if (email.includes('advisor')) {
+      role = 'approver';
+      approverLevel = 'advisor';
+      firstName = 'Advisor';
+    } else if (email.includes('department_head')) {
+      role = 'approver';
+      approverLevel = 'department_head';
+      firstName = 'Department';
+      lastName = 'Head';
+    } else if (email.includes('dean')) {
+      role = 'approver';
+      approverLevel = 'dean';
+      firstName = 'Dean';
+    } else if (email.includes('registrar')) {
+      role = 'approver';
+      approverLevel = 'registrar';
+      firstName = 'Registrar';
+    }
+    
+    // Send success response
+    res.json({
+      status: 'success',
+      token: 'simple-token-' + Date.now(),
+      user: {
+        id: 'user-id-' + Date.now(),
+        email,
+        firstName,
+        lastName,
+        role,
+        approverLevel
+      }
+    });
+  } else {
+    // Send error for invalid credentials
+    res.status(401).json({
+      status: 'error',
+      message: 'Invalid credentials. Use test accounts with password "admin123".'
+    });
+  }
+});
+
+// Start the server
+const PORT = 5005;
+app.listen(PORT, () => {
+  console.log(`Simple login server running on port ${PORT}`);
+  console.log(`Access at http://localhost:${PORT} or http://147.50.10.29:${PORT}`);
+});
