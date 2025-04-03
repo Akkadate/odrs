@@ -1,0 +1,4 @@
+PostgreSQL Server
+  Host=remote.devapp.cc
+  user=postgres
+  password=Tct85329$
