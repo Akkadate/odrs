@@ -27,9 +27,12 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Get user from the token
+    console.log('Auth middleware - decoded token ID:', decoded.id, 'type:', typeof decoded.id);
     const user = await User.findByPk(decoded.id);
-
-    if (!user) {
+    
+    if (user) {
+      console.log('Auth middleware - found user with ID:', user.id, 'type:', typeof user.id);
+    } else {
       return res.status(401).json({
         status: 'error',
         message: 'User no longer exists'

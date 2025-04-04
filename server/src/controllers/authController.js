@@ -139,11 +139,38 @@ exports.login = async (req, res) => {
     if (email.includes('@odocs.devapp.cc') && password === 'admin123') {
       console.log('Development mode: Using test account login');
       
-      // Find user or create a mock one
+      // Find user in database
       let user = await User.findOne({ where: { email } });
       
-      if (!user) {
-        console.log('Creating mock user for:', email);
+      if (user) {
+        console.log('Found existing user in database:', email);
+        
+        // Generate token
+        const token = generateToken(user.id);
+        
+        return res.status(200).json({
+          status: 'success',
+          token,
+          user: {
+            id: user.id,
+            studentId: user.studentId,
+            staffId: user.staffId,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            firstNameEn: user.firstNameEn,
+            lastNameEn: user.lastNameEn,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            department: user.department,
+            faculty: user.faculty,
+            language: user.language,
+            approverLevel: user.approverLevel
+          }
+        });
+      } else {
+        // If user doesn't exist in database, create a real user
+        console.log('Creating real user in database for:', email);
         
         // Determine role and other details based on email
         let role = 'student';
@@ -172,32 +199,34 @@ exports.login = async (req, res) => {
           approverLevel = 'registrar';
         }
         
-        // Create a mock user object
-        user = {
-          id: 'mock-' + Date.now(),
+        // Create a real user in the database
+        user = await User.create({
           email,
           firstName,
           lastName,
+          password: 'admin123', // This will be hashed by the model hooks
           role,
-          approverLevel
-        };
+          approverLevel,
+          language: 'en'
+        });
+        
+        // Generate token
+        const token = generateToken(user.id);
+        
+        return res.status(200).json({
+          status: 'success',
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            language: user.language,
+            approverLevel: user.approverLevel
+          }
+        });
       }
-      
-      // Generate token
-      const token = generateToken(user.id);
-      
-      return res.status(200).json({
-        status: 'success',
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName || 'Test',
-          lastName: user.lastName || 'User',
-          role: user.role || 'student',
-          approverLevel: user.approverLevel
-        }
-      });
     }
 
     // Normal authentication flow

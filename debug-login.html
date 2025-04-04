@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ODRS Debug Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+      display: none;
+    }
+    .error {
+      color: #D8000C;
+      background-color: #FFBABA;
+      padding: 10px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>ODRS Debug Login</h1>
+  <p>This page tests direct login to the PostgreSQL database.</p>
+  
+  <div class="form-group">
+    <label for="email">Email:</label>
+    <input type="email" id="email" value="admin@odocs.devapp.cc">
+  </div>
+  
+  <div class="form-group">
+    <label for="password">Password:</label>
+    <input type="password" id="password" value="admin123">
+  </div>
+
+  <div class="form-group">
+    <label for="server">Server URL:</label>
+    <input type="text" id="server" value="http://localhost:5002/login">
+  </div>
+  
+  <button onclick="testLogin()">Test Login</button>
+  
+  <div id="error" class="error"></div>
+  <div id="result" class="result"></div>
+  
+  <script>
+    async function testLogin() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const serverUrl = document.getElementById('server').value;
+      const resultDiv = document.getElementById('result');
+      const errorDiv = document.getElementById('error');
+      
+      // Reset display
+      resultDiv.style.display = 'none';
+      errorDiv.style.display = 'none';
+      
+      try {
+        console.log('Testing login with:', { email, password });
+        
+        const response = await fetch(serverUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        console.log('Login response:', data);
+        
+        if (response.ok) {
+          resultDiv.innerHTML = `
+            <h3>Login Successful!</h3>
+            <p><strong>User:</strong> ${data.user.firstName} ${data.user.lastName}</p>
+            <p><strong>Role:</strong> ${data.user.role}</p>
+            <p><strong>Token:</strong> ${data.token.substring(0, 20)}...</p>
+          `;
+          resultDiv.style.display = 'block';
+        } else {
+          errorDiv.textContent = data.message || 'Login failed';
+          errorDiv.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorDiv.textContent = `Error: ${error.message}`;
+        errorDiv.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>

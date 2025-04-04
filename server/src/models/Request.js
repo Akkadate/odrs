@@ -3,8 +3,8 @@ const { sequelize } = require('../config/db');
 
 const Request = sequelize.define('Request', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
     primaryKey: true
   },
   requestNumber: {
@@ -13,11 +13,11 @@ const Request = sequelize.define('Request', {
     unique: true
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false
   },
   documentTypeId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false
   },
   quantity: {
@@ -30,7 +30,7 @@ const Request = sequelize.define('Request', {
     allowNull: false,
     defaultValue: 'th',
     validate: {
-      isIn: [['th', 'en']]
+      isIn: [['thai', 'english', 'th', 'en']]
     }
   },
   deliveryMethod: {

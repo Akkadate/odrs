@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
+import requestService from '../../services/requestService';
 
 const RequestForm = () => {
   const { t } = useTranslation();
@@ -18,7 +18,7 @@ const RequestForm = () => {
   const [formData, setFormData] = useState({
     documentTypeId: '',
     quantity: 1,
-    language: 'thai',
+    language: 'th',
     deliveryMethod: 'pickup',
     deliveryAddress: '',
   });
@@ -34,14 +34,10 @@ const RequestForm = () => {
     const fetchDocumentTypes = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/documents', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const response = await requestService.getDocumentTypes();
         
-        if (response.data.status === 'success') {
-          setDocumentTypes(response.data.data);
+        if (response.status === 'success') {
+          setDocumentTypes(response.data);
         } else {
           setError('Failed to fetch document types');
         }
@@ -54,7 +50,7 @@ const RequestForm = () => {
     };
     
     fetchDocumentTypes();
-  }, [token]);
+  }, []);
   
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -116,18 +112,22 @@ const RequestForm = () => {
     
     try {
       setLoading(true);
-      const response = await axios.post('/api/requests', formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
       
-      if (response.data.status === 'success') {
+      // Add price details to form data
+      const requestData = {
+        ...formData,
+        documentPrice: priceDetails.documentPrice,
+        shippingFee: priceDetails.shippingFee,
+        totalPrice: priceDetails.totalPrice
+      };
+      
+      const response = await requestService.createRequest(requestData);
+      
+      if (response.status === 'success') {
         // Redirect to request details or list
         navigate('/requests');
       } else {
-        setError(response.data.message || 'Failed to submit request');
+        setError(response.message || 'Failed to submit request');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Error submitting request');
@@ -193,8 +193,8 @@ const RequestForm = () => {
             onChange={handleInputChange}
             required
           >
-            <option value="thai">{t('thai')}</option>
-            <option value="english">{t('english')}</option>
+            <option value="th">{t('thai')}</option>
+            <option value="en">{t('english')}</option>
           </select>
         </div>
         

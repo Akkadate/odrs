@@ -8,6 +8,7 @@ const { generatePassword } = require('./generators');
 const seedDatabase = async () => {
   try {
     console.log('Starting database seeding...');
+    console.log('Using database dialect:', sequelize.options.dialect);
     
     // Create admin user
     const adminPassword = process.env.ADMIN_SEED_PASSWORD || 'admin123';

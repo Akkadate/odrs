@@ -3,12 +3,12 @@ const { sequelize } = require('../config/db');
 
 const Payment = sequelize.define('Payment', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
     primaryKey: true
   },
   requestId: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false
   },
   amount: {
@@ -32,7 +32,7 @@ const Payment = sequelize.define('Payment', {
     }
   },
   verifiedBy: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: true
   },
   verifiedAt: {

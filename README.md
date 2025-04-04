@@ -67,10 +67,11 @@ DOMAIN=odocs.devapp.cc
 
 # Database configuration
 DB_HOST=remote.devapp.cc
-DB_USER=postgres
-DB_PASSWORD=yourpassword
-DB_NAME=odrs
+DB_USER=odrs_user
+DB_PASSWORD=odrs_password
+DB_NAME=odrs_db
 DB_PORT=5432
+USE_SQLITE=false
 
 # JWT Secret
 JWT_SECRET=your_jwt_secret
@@ -84,7 +85,21 @@ EMAIL_PASS=emailpassword
 EMAIL_FROM=noreply@example.com
 ```
 
-3. Run the deployment script:
+3. Set up the PostgreSQL database:
+
+```bash
+# Run the database setup script
+./setup-database.sh
+```
+
+This script will:
+- Check if PostgreSQL client is installed
+- Create the database and user on the PostgreSQL server
+- Configure environment variables
+- Run database migrations
+- Seed the database with initial data including test accounts
+
+4. Run the deployment script:
 
 ```bash
 ./deploy.sh

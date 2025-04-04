@@ -3,8 +3,8 @@ const { sequelize } = require('../config/db');
 
 const DocumentType = sequelize.define('DocumentType', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
     primaryKey: true
   },
   name: {
@@ -47,9 +47,10 @@ const DocumentType = sequelize.define('DocumentType', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
-  processingTime: {
+  processingDays: {
     type: DataTypes.INTEGER, // in days
-    allowNull: true
+    allowNull: false,
+    defaultValue: 3
   }
 });
 

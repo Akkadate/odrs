@@ -1,6 +1,45 @@
 // ODRS - Online Document Request System
 // Main application JavaScript file
 
+// Helper functions for session persistence
+const SessionManager = {
+  saveUser: function(user, authToken) {
+    try {
+      localStorage.setItem('odrs_user', JSON.stringify(user));
+      localStorage.setItem('odrs_token', authToken);
+      console.log('User session saved to localStorage');
+      return true;
+    } catch (e) {
+      console.error('Error saving user to localStorage:', e);
+      return false;
+    }
+  },
+  
+  getUser: function() {
+    try {
+      const userData = localStorage.getItem('odrs_user');
+      return userData ? JSON.parse(userData) : null;
+    } catch (e) {
+      console.error('Error retrieving user from localStorage:', e);
+      return null;
+    }
+  },
+  
+  getToken: function() {
+    return localStorage.getItem('odrs_token');
+  },
+  
+  clearSession: function() {
+    localStorage.removeItem('odrs_user');
+    localStorage.removeItem('odrs_token');
+    console.log('User session cleared from localStorage');
+  },
+  
+  isLoggedIn: function() {
+    return !!this.getUser() && !!this.getToken();
+  }
+};
+
 // Global variables
 let currentUser = null;
 let token = null;
@@ -102,12 +141,55 @@ document.addEventListener('DOMContentLoaded', function() {
   pages.forEach(page => {
     page.style.display = 'none';
   });
-  document.getElementById('login-page').style.display = 'block';
   
-  // Hide role-specific nav items until login
-  document.getElementById('approvals-nav-item').style.display = 'none';
-  document.getElementById('processing-nav-item').style.display = 'none';
-  document.getElementById('reports-nav-item').style.display = 'none';
+  // Check if user is already logged in using SessionManager
+  if (SessionManager.isLoggedIn()) {
+    try {
+      // Restore the user session
+      currentUser = SessionManager.getUser();
+      token = SessionManager.getToken();
+      
+      console.log('Found saved session, restoring user:', currentUser.name);
+      
+      // Update UI
+      document.getElementById('user-name').textContent = currentUser.name;
+      document.getElementById('user-role').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+      
+      // Show/hide role-specific nav items
+      if (currentUser.role === 'approver' || currentUser.role === 'admin') {
+        document.getElementById('approvals-nav-item').style.display = 'block';
+      }
+      
+      if (currentUser.role === 'staff' || currentUser.role === 'admin') {
+        document.getElementById('processing-nav-item').style.display = 'block';
+      }
+      
+      if (currentUser.role === 'admin') {
+        document.getElementById('reports-nav-item').style.display = 'block';
+      }
+      
+      // Show requests page instead of login page
+      showPage('requests');
+      console.log('Restored user session for', currentUser.name);
+    } catch (error) {
+      console.error('Error restoring user session:', error);
+      // If there's an error, show the login page
+      document.getElementById('login-page').style.display = 'block';
+      
+      // Hide role-specific nav items
+      document.getElementById('approvals-nav-item').style.display = 'none';
+      document.getElementById('processing-nav-item').style.display = 'none';
+      document.getElementById('reports-nav-item').style.display = 'none';
+    }
+  } else {
+    // No saved login, show login page
+    document.getElementById('login-page').style.display = 'block';
+    
+    // Hide role-specific nav items until login
+    document.getElementById('approvals-nav-item').style.display = 'none';
+    document.getElementById('processing-nav-item').style.display = 'none';
+    document.getElementById('reports-nav-item').style.display = 'none';
+  }
   
   console.log('ODRS application initialized');
 });
@@ -165,6 +247,9 @@ function login(email, password) {
     // Generate a fake token
     token = 'fake-token-' + Date.now();
     
+    // Save user session using SessionManager
+    SessionManager.saveUser(currentUser, token);
+    
     // Update UI
     document.getElementById('user-name').textContent = currentUser.name;
     document.getElementById('user-role').textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
@@ -203,6 +288,9 @@ function logout() {
   // Clear current user and token
   currentUser = null;
   token = null;
+  
+  // Clear session storage
+  SessionManager.clearSession();
   
   // Reset UI
   document.getElementById('user-name').textContent = 'Loading...';

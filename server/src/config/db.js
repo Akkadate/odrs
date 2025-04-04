@@ -24,7 +24,12 @@ const setupSequelize = () => {
         host: process.env.DB_HOST,
         port: process.env.DB_PORT,
         dialect: 'postgres',
-        logging: process.env.NODE_ENV === 'development' ? console.log : false,
+        logging: (sql, queryObject) => {
+          console.log('SQL:', sql);
+          if (queryObject?.bind) {
+            console.log('PARAMS:', JSON.stringify(queryObject.bind));
+          }
+        },
         dialectOptions: {
           ssl: process.env.NODE_ENV === 'production'
         },

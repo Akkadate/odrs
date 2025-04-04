@@ -8,6 +8,7 @@ require('dotenv').config();
 // @access  Private
 exports.createRequest = async (req, res) => {
   try {
+    console.log('Request data received:', req.body);
     const { 
       documentTypeId, 
       quantity, 
@@ -55,12 +56,19 @@ exports.createRequest = async (req, res) => {
     const requestNumber = generateRequestNumber();
 
     // Create request
+    console.log('Request controller - user ID:', req.user.id, 'type:', typeof req.user.id);
+    console.log('Request controller - user object:', JSON.stringify(req.user, null, 2));
+    
+    // Convert language format from th/en to thai/english
+    const languageFormatted = language === 'th' ? 'thai' : 'english';
+    console.log('Request controller - converting language from:', language, 'to:', languageFormatted);
+    
     const request = await Request.create({
       requestNumber,
       userId: req.user.id,
       documentTypeId,
       quantity,
-      language,
+      language: languageFormatted,
       deliveryMethod,
       deliveryAddress,
       totalPrice,
